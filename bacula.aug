@@ -24,21 +24,23 @@ About: Examples
 module Bacula =
    autoload xfm
 
-   let val = del /"?/ "\"" . store /[^# \t\n"]([^#\n"]*[^;# \t\n"])?/ . del /"?;?/ "\""
+   let val = del /"?/ "\"" . store /[^# \t\n"]([^#\n"]*[^;# \t\n"])?/ . del /"?/ "\""
 
    let indent = Util.del_opt_ws "\t"
    let equal = del /[ \t]*=[ \t]*/ " = "
-   let name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
+   let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
 
-   let line = indent . Build.key_value_line_comment name equal val Util.comment_eol
-
+   let keyvalue = [key key_name . equal . val]
    (* TODO: support file includes *)
-   let content = del /[ \t]*\{/ " {" . Util.comment_or_eol . (line)+ . del /[ \t]*\}/ "}"
+   let include = [label "@include" . del "@" "@" . store /[^ #\t\n@}]+/]
+
+   let line = indent . (keyvalue|include)* . (del ";" ";"|Util.comment_or_eol)
+   let brackets = del /[ \t]*\{/ " {" . line+ . del /[ \t\n]*}/ "\n}"
 
    (* TODO: support nested directives *)
-   let directive = [ key /[a-zA-Z]+/ . content ]
+   let directive = [ key /[a-zA-Z]+/ . brackets ]
 
-   let lns = (directive|Util.empty|Util.comment)*
+   let lns = (directive|Util.comment_or_eol)*
 
    let filter = incl "/etc/bacula/*.conf"
               . Util.stdexcl
@@ -63,11 +65,12 @@ module Bacula =
          {"Pid Directory" = "kaki sd"}
       }
 
-   (* no endline *)
+   (* no endline
    test Bacula.lns get "Storage {\n   Name = kaki sd}" =
       {"Storage"
          {"Name" = "kaki sd"}
       }
+   *)
 
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
@@ -78,9 +81,8 @@ module Bacula =
    (* inline comment *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}" =
       {"Storage"
-         {"Name" = "kaki-sd"
-           { "#comment" = "just a comment"}
-         }
+         {"Name" = "kaki-sd"}
+         { "#comment" = "just a comment"}
       }
 
    (* multiple values *)
@@ -89,3 +91,11 @@ module Bacula =
          {"Name" = "kaki sd"}
          {"Foo" = "moo"}
       }
+
+   (* include statements *)
+   test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}" =
+      {"Storage"
+         {"@include" = "/etc/foo.conf"}
+      }
+   
+   (* TODO: comment at end of line with } *)
