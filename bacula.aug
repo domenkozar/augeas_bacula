@@ -28,9 +28,9 @@ module Bacula =
 
    let indent = Util.del_opt_ws "\t"
    let equal = del /[ \t]*=[ \t]*/ " = "
+   let name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
 
-   (* TODO: support whitespace in key name *)
-   let line = indent . Build.key_value_line_comment Rx.word equal val Util.comment_eol
+   let line = indent . Build.key_value_line_comment name equal val Util.comment_eol
 
    (* TODO: support file includes *)
    let content = del /[ \t]*\{/ " {" . Util.comment_or_eol . (line)+ . del /[ \t]*\}/ "}"
@@ -45,32 +45,46 @@ module Bacula =
 
    let xfm = transform lns filter
 
+   (* basic directive *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}" =
       {"Storage"
          {"Name" = "kaki-sd"}
       }
 
+   (* value can have quotes *)
    test Bacula.lns get "Storage {\n   Name = \"kaki sd\"\n}" =
       {"Storage"
          {"Name" = "kaki sd"}
       }
 
+   (* whitespace in key *)
+   test Bacula.lns get "Storage {\n   Pid Directory = kaki sd\n}" =
+      {"Storage"
+         {"Pid Directory" = "kaki sd"}
+      }
+
+   (* no endline *)
+   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
+      {"Storage"
+         {"Name" = "kaki sd"}
+      }
+
+   (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"Storage"
          {"Name" = "kaki-sd"}
       }
 
-   test Bacula.lns get "Storage {\n   Name = kaki-sd;         # just a comment\n}" =
+   (* inline comment *)
+   test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}" =
       {"Storage"
          {"Name" = "kaki-sd"
            { "#comment" = "just a comment"}
          }
       }
 
-   test Bacula.lns get "Storage {
-   Name = kaki sd
-   Foo = moo
-}" =
+   (* multiple values *)
+   test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}" =
       {"Storage"
          {"Name" = "kaki sd"}
          {"Foo" = "moo"}
