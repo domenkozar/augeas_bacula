@@ -28,7 +28,9 @@ module Bacula =
 
    let equal = del /[ \t]*=[ \t]*/ " = "
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
-   let val = del /"?/ "\"" . store /[^"#\n\t ][^"#\n]*[^"#\n\t; ]/ . del /"?/ "\""
+   let dquote = del /"?/ "\""
+
+   let val = dquote . store /[^"#\n\t; ][^"#\n;]*[^"#\n\t; ]/ . dquote
 
    let keyvalue = [key key_name . equal . val]
    let include = [label "@include" . del "@" "@" . store /[^ #\t\n@};]+/]
