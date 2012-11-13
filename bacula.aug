@@ -120,11 +120,12 @@ module Bacula =
       { "#comment" = "just a comment"} }
 
    (* TODO: comment after } *)
-   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment\n" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"
-      }
-      { "#comment" = "just a comment"} }
+      } }
+      { }
+      { "#comment" = "just a comment"}
 
    (* multiple values *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}" =
@@ -188,20 +189,9 @@ module Bacula =
             {"File" = "/etc"}
          }
       }
-   (* no endline *)
-   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
-      {"@block" = "Storage"
-         {"Name" = "kaki sd"}
-      }
-
-   (* include statements in directives *)
-   test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}\n" =
-      {"Storage"
-         {"@include" = "/etc/foo.conf"}
-      }
 
    (* TODO: include top level statements *)
-   test Bacula.lns get "@/etc/foo.conf" =
+   test Bacula.lns get "@/etc/foo.conf\n" =
       {"@include" = "/etc/foo.conf"}
 
    (* Blocks can follow each other without \n *)
