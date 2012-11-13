@@ -37,7 +37,7 @@ module Bacula =
 
    let semicolon = [ del /[ \t]*;/ ";" ]
    let line = indent . (keyvalue|include) . (semicolon|Util.comment_or_eol)
-   let brackets = del /[ \n\t]*\{/ " {" . line+ . del /[ \t\n]*}/ "\n}"
+   let brackets = del /[ \n\t]*\{\n*/ " {\n" . line+ . del /[ \t\n]*}/ "\n}"
 
    let directive = [ key /[a-zA-Z]+/ . brackets ]
 
