@@ -24,23 +24,21 @@ About: Examples
 module Bacula =
    autoload xfm
 
-   let val = del /"?/ "\"" . store /[^# \t\n"]([^#\n"]*[^;# \t\n"])?/ . del /"?/ "\""
-
    let indent = Util.del_opt_ws "\t"
+
    let equal = del /[ \t]*=[ \t]*/ " = "
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
+   let val = del /"?/ "\"" . store /[^"#\n\t ][^"#\n]*[^"#\n\t; ]/ . del /"?/ "\""
 
    let keyvalue = [key key_name . equal . val]
-   (* TODO: support file includes *)
-   let include = [label "@include" . del "@" "@" . store /[^ #\t\n@}]+/]
+   let include = [label "@include" . del "@" "@" . store /[^ #\t\n@};]+/]
 
-   let line = indent . (keyvalue|include)* . (del ";" ";"|Util.comment_or_eol)
-   let brackets = del /[ \t]*\{/ " {" . line+ . del /[ \t\n]*}/ "\n}"
+   let line = indent . (keyvalue|include) . del /;?/ "" . Util.comment_or_eol
+   let brackets = del /[ \n\t]*\{/ " {" . line+ . del /[ \t\n]*}/ "\n}"
 
-   (* TODO: support nested directives *)
    let directive = [ key /[a-zA-Z]+/ . brackets ]
 
-   let lns = (directive|Util.comment_or_eol)*
+   let lns = (directive|Util.empty|Util.comment_eol)*
 
    let filter = incl "/etc/bacula/*.conf"
               . Util.stdexcl
@@ -65,13 +63,6 @@ module Bacula =
          {"Pid Directory" = "kaki sd"}
       }
 
-   (* no endline
-   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
-      {"Storage"
-         {"Name" = "kaki sd"}
-      }
-   *)
-
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"Storage"
@@ -92,10 +83,47 @@ module Bacula =
          {"Foo" = "moo"}
       }
 
-   (* include statements *)
+   (* newline comment *)
+   test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
+      {"Storage"
+         {"Name" = "kaki sd"}
+         {"#comment" = "just a comment"}
+      }
+
+   (* TODO: include statements *)
    test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}" =
       {"Storage"
          {"@include" = "/etc/foo.conf"}
       }
    
+   (* TODO: support nested directives
+   test Bacula.lns get "FileSet {
+  Name = \"DefaultSet\"
+  Include {
+    Options {
+      signature = SHA1
+      noatime = yes
+    }
+    File = /etc
+  }
+}" =
+      {"FileSet"
+         {"Name" = "DefaultSet"}
+         {"Include"
+            {"Options"
+              {"signature" = "SHA1"}
+              {"noatime" = "yes"}
+            }
+            {"File" = "/etc"}
+         }
+      }
+*)
+
+   (* TODO: no endline
+   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
+      {"Storage"
+         {"Name" = "kaki sd"}
+      }
+   *)
+
    (* TODO: comment at end of line with } *)
