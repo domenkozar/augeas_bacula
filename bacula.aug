@@ -32,7 +32,7 @@ module Bacula =
    let val = dquote . store /[^}"#\n\t; ][^}"#\n;]*[^}"#\n\t; ]/ . dquote
 
    let keyvalue = key key_name . equal . val
-   let include = label "@include" . del "@" "@" . store /[^ #\t\n@};]+/
+   let include = label "@include" . Util.del_str "@" . store /[^ #\t\n@};]+/
 
    let semicolon = del /([ \t]*;)?/ ""
    let eol = del /[ \t]*(;|(#[ \t]*)?\n)/ "\n"
