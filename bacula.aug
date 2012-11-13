@@ -37,9 +37,13 @@ module Bacula =
 
    let semicolon = [ del /[ \t]*;/ ";" ]
    let line (sto:lens) = [ indent . sto . (semicolon|Util.comment_or_eol) ]
-   let brackets = del /[ \n\t]*\{\n*/ " {\n" . (line keyvalue |line include)+ . del /[ \t\n]*}/ "\n}"
+   let brackets (sto:lens) = del /[ \n\t]*\{\n*/ " {\n"
+                . (sto|Util.comment)
+                . ((sto|Util.empty|Util.comment)*
+                . (sto|Util.comment))?
+                . del /[ \n\t]*}/ "\n}"
 
-   let directive = [ key /[a-zA-Z]+/ . brackets ]
+   let directive = [ key /[a-zA-Z]+/ . brackets (line keyvalue |line include) ]
 
    let lns = (directive|Util.empty|Util.comment)*
 
@@ -89,16 +93,14 @@ module Bacula =
    (* newline comment *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
       {"Storage"
-         {"Name" = "kaki sd"
-           {"#comment" = "just a comment"}
-           {} }
+         {"Name" = "kaki sd" }
+         {"#comment" = "just a comment" }
       }
 
    (* TODO: include statements *)
    test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}" =
       {"Storage"
          {"@include" = "/etc/foo.conf"}
-         {}
       }
    
    (* TODO: support nested directives
