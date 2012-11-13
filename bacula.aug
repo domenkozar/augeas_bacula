@@ -32,7 +32,7 @@ module Bacula =
    let val = dquote . store /[^}"#\n\t; ][^}"#\n;]*[^}"#\n\t; ]/ . dquote
 
    let keyvalue = key key_name . equal . val
-   let include = label "@include" . Util.del_str "@" . store /[^ #\t\n@};]+/
+   let include = label "@include" . Util.del_str "@" . store /[^# \t\n@};]+/
 
    let semicolon = del /([ \t]*;)?/ ""
    let eol = del /[ \t]*(;|(#[ \t]*)?\n)/ "\n"
@@ -61,7 +61,9 @@ module Bacula =
             Build.block_rdelim_default (* rdelim_default *) 
         ]
 
-   let lns = ((Util.indent . block)|Util.empty|Util.comment)*
+   let statement = Util.indent . (line keyvalue | line include | block)
+
+   let lns = (statement|Util.empty|Util.comment)*
 
    let filter = incl "/etc/bacula/*.conf"
               . Util.stdexcl
@@ -73,8 +75,8 @@ module Bacula =
    test (Bacula.line keyvalue) get "Name = kaki-sd\n" =
       {"Name" = "kaki-sd"}
 
-   test (Bacula.line include) get "@foobar\n" =
-      {"@include" = "foobar"}
+   test (Bacula.line include) get "@/etc/foo.conf\n" =
+      {"@include" = "/etc/foo.conf"}
 
    test (Bacula.line keyvalue) get "Name = kaki-sd;" =
       {"Name" = "kaki-sd"}
