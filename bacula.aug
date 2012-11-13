@@ -67,6 +67,8 @@ module Bacula =
               . Util.stdexcl
 
    let xfm = transform lns filter
+  
+   (* TODO: put tests *)
 
    test (Bacula.line keyvalue) get "Name = kaki-sd\n" =
       {"Name" = "kaki-sd"}
@@ -109,6 +111,20 @@ module Bacula =
          {"Name" = "kaki-sd"
            { "#comment" = "just a comment"} }
       }
+
+   (* comment as part of directive *)
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n # just a comment\n}" =
+      {"@block" = "Storage"
+         {"Name" = "kaki-sd"
+      }
+      { "#comment" = "just a comment"} }
+
+   (* TODO: comment after } *)
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment" =
+      {"@block" = "Storage"
+         {"Name" = "kaki-sd"
+      }
+      { "#comment" = "just a comment"} }
 
    (* multiple values *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}" =
@@ -172,5 +188,35 @@ module Bacula =
             {"File" = "/etc"}
          }
       }
+   (* no endline *)
+   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
+      {"@block" = "Storage"
+         {"Name" = "kaki sd"}
+      }
 
-   (* TODO: comment at end of line with } *)
+   (* include statements in directives *)
+   test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}\n" =
+      {"Storage"
+         {"@include" = "/etc/foo.conf"}
+      }
+
+   (* TODO: include top level statements *)
+   test Bacula.lns get "@/etc/foo.conf" =
+      {"@include" = "/etc/foo.conf"}
+
+   (* Blocks can follow each other without \n *)
+   test Bacula.lns get "Storage{Name = kaki sd}Storage{Name = kaki-sd}" =
+   { "@block" = "Storage"
+     { "Name" = "kaki sd" }
+   }
+   { "@block" = "Storage"
+     { "Name" = "kaki-sd" }
+   }
+
+   (* recursive directives *)
+   test Bacula.lns get "FileSet { Include { signature = SHA1 } }" =
+   { "@block" = "FileSet"
+       { "@block" = "Include"
+         { "signature" = "SHA1" }
+       }
+   }
