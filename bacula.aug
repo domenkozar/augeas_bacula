@@ -142,6 +142,11 @@ module Bacula =
          {"Foo" = "moo"}
       }
 
+   (* toplevel key/value for include files *)
+   test Bacula.lns get "Name = kaki sd\nFoo = moo\n" =
+      {"Name" = "kaki sd"}
+      {"Foo" = "moo"}
+
    (* newline comment *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
       {"@block" = "Storage"
