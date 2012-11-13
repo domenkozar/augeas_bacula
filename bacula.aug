@@ -153,11 +153,9 @@ module Bacula =
       }
 *)
 
-   (* TODO: no endline
-   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
+   test Bacula.lns get "Storage {\n   Name = kaki sd}\n" =
       {"Storage"
          {"Name" = "kaki sd"}
       }
-   *)
 
    (* TODO: comment at end of line with } *)
