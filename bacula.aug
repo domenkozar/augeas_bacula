@@ -37,13 +37,15 @@ module Bacula =
    let semicolon = del /([ \t]*;)?/ ""
    let eol = del /[ \t]*(;|(#[ \t]*)?\n)/ "\n"
    let comment_or_eol = Util.comment_eol | eol
+   let comment_or_semicolon = Util.comment_eol | semicolon
 
    let line (sto:lens) = [ sto . comment_or_eol ]
+   let line_noeol (sto:lens) = [ sto . comment_or_semicolon ]
 
    let directive =
         let entry = Util.empty | (indent . (line keyvalue|line include))
      in let entry_noindent = line keyvalue|line include
-     in let entry_noindent_noeol = ([keyvalue] | [include]) . semicolon
+     in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include
      in let entry_noeol = indent . entry_noindent_noeol
      in [ key /[a-zA-Z]+/
         . Build.block_generic
