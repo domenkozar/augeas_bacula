@@ -34,6 +34,7 @@ module Bacula =
    let keyvalue = key key_name . equal . val
    let include = label "@include" . del "@" "@" . store /[^ #\t\n@};]+/
 
+   let semicolon = del /([ \t]*;)?/ ""
    let eol = del /[ \t]*(;|(#[ \t]*)?\n)/ "\n"
    let comment_or_eol = Util.comment_eol | eol
 
@@ -42,7 +43,7 @@ module Bacula =
    let directive =
         let entry = Util.empty | (indent . (line keyvalue|line include))
      in let entry_noindent = line keyvalue|line include
-     in let entry_noindent_noeol = [keyvalue] | [include]
+     in let entry_noindent_noeol = ([keyvalue] | [include]) . semicolon
      in let entry_noeol = indent . entry_noindent_noeol
      in [ key /[a-zA-Z]+/
         . Build.block_generic
@@ -74,7 +75,7 @@ module Bacula =
    test (Bacula.line keyvalue) get "Name = kaki-sd;" =
       {"Name" = "kaki-sd"}
 
-   test (Bacula.line include) get "@foobar;" =
+   test (Bacula.line include) get "@foobar  ;" =
       {"@include" = "foobar"}
 
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n" =
@@ -97,7 +98,7 @@ module Bacula =
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}\n" =
       {"Storage"
-         {"Name" = "kaki-sd" {} }
+         {"Name" = "kaki-sd" }
       }
 
    (* inline comment *)
