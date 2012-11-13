@@ -29,7 +29,7 @@ module Bacula =
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
    let dquote = del /"?/ "\""
 
-   let val = dquote . store /[^"#\n\t; ][^"#\n;]*[^"#\n\t; ]/ . dquote
+   let val = dquote . store /[^}"#\n\t; ][^}"#\n;]*[^}"#\n\t; ]/ . dquote
 
    let keyvalue = key key_name . equal . val
    let include = label "@include" . del "@" "@" . store /[^ #\t\n@};]+/
@@ -42,9 +42,9 @@ module Bacula =
    let line (sto:lens) = [ sto . comment_or_eol ]
    let line_noeol (sto:lens) = [ sto . comment_or_semicolon ]
 
-   let directive =
+   let block =
         let entry = Util.empty | (indent . (line keyvalue|line include))
-     in let entry_noindent = line keyvalue|line include
+     in let entry_noindent = line keyvalue | line include
      in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include
      in let entry_noeol = indent . entry_noindent_noeol
      in [ label "@block" . store /[a-zA-Z]+/
@@ -55,13 +55,13 @@ module Bacula =
             entry_noindent_noeol       (* entry_noindent_noeol *) 
             Util.comment               (* comment *)
             Util.comment_noindent      (* comment_noindent *)
-            Build.block_ldelim_re      (* ldelim_re *)
+            /[ \t\n]*\{[ \t\n]*/       (* ldelim_re *)
             Build.block_rdelim_re      (* rdelim_re *) 
             " {\n\t"                   (* ldelim_default *) 
             Build.block_rdelim_default (* rdelim_default *) 
-        . Util.eol ]
+        ]
 
-   let lns = (directive|Util.empty|Util.comment)*
+   let lns = ((Util.indent . block)|Util.empty|Util.comment)*
 
    let filter = incl "/etc/bacula/*.conf"
               . Util.stdexcl
@@ -82,44 +82,44 @@ module Bacula =
    test (Bacula.line include) get "@foobar  ;" =
       {"@include" = "foobar"}
 
-   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"}
       }
 
    (* value can have quotes *)
-   test Bacula.lns get "Storage {\n   Name = \"kaki sd\"\n}\n" =
+   test Bacula.lns get "Storage {\n   Name = \"kaki sd\"\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki sd"}
       }
 
    (* whitespace in key *)
-   test Bacula.lns get "Storage {\n   Pid Directory = kaki sd\n}\n" =
+   test Bacula.lns get "Storage {\n   Pid Directory = kaki sd\n}" =
       {"@block" = "Storage"
          {"Pid Directory" = "kaki sd"}
       }
 
    (* semicolon *)
-   test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}\n" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd" }
       }
 
    (* inline comment *)
-   test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}\n" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"
            { "#comment" = "just a comment"} }
       }
 
    (* comment as part of directive *)
-   test Bacula.lns get "Storage {\n   Name = kaki-sd\n # just a comment\n}\n" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n # just a comment\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"
       }
       { "#comment" = "just a comment"} }
 
-   (* comment after } *)
+   (* TODO: comment after } *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"
@@ -127,34 +127,27 @@ module Bacula =
       { "#comment" = "just a comment"} }
 
    (* multiple values *)
-   test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}\n" =
+   test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki sd"}
          {"Foo" = "moo"}
       }
 
    (* newline comment *)
-   test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}\n" =
+   test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
       {"@block" = "Storage"
          {"Name" = "kaki sd" }
          {"#comment" = "just a comment" }
       }
 
    (* no endline *)
-   test Bacula.lns get "Storage {\n   Name = kaki sd}\n" =
+   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
       {"@block" = "Storage"
          {"Name" = "kaki sd"}
       }
 
-   (* one directive after another *)
-   test Bacula.lns get "Storage {}Storage {}" =
-      {"@block" = "Storage"
-      }
-      {"@block" = "Storage"
-      }
-
    (* include statements in directives *)
-   test Bacula.lns get "Storage {\n@/etc/foo.conf\n}\n" =
+   test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}\n" =
       {"Storage"
          {"@include" = "/etc/foo.conf"}
       }
@@ -163,8 +156,16 @@ module Bacula =
    test Bacula.lns get "@/etc/foo.conf" =
       {"@include" = "/etc/foo.conf"}
 
+   (* Blocks can follow each other without \n *)
+   test Bacula.lns get "Storage{Name = kaki sd}Storage{Name = kaki-sd}" =
+   { "@block" = "Storage"
+     { "Name" = "kaki sd" }
+   }
+   { "@block" = "Storage"
+     { "Name" = "kaki-sd" }
+   }
    
-   (* TODO: support nested directives
+   (* recursive directives *)
    test Bacula.lns get "FileSet {
   Name = \"DefaultSet\"
   Include {
@@ -184,11 +185,5 @@ module Bacula =
             }
             {"File" = "/etc"}
          }
-      }
-*)
-
-   test Bacula.lns get "Storage {\n   Name = kaki sd}\n" =
-      {"@block" = "Storage"
-         {"Name" = "kaki sd"}
       }
 
