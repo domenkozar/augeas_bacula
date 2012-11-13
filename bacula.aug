@@ -47,7 +47,7 @@ module Bacula =
      in let entry_noindent = line keyvalue|line include
      in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include
      in let entry_noeol = indent . entry_noindent_noeol
-     in [ key /[a-zA-Z]+/
+     in [ label "@block" . store /[a-zA-Z]+/
         . Build.block_generic
             entry                      (* entry *)
             entry_noindent             (* entry_noindent *)
@@ -81,52 +81,52 @@ module Bacula =
       {"@include" = "foobar"}
 
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki-sd"}
       }
 
    (* value can have quotes *)
    test Bacula.lns get "Storage {\n   Name = \"kaki sd\"\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki sd"}
       }
 
    (* whitespace in key *)
    test Bacula.lns get "Storage {\n   Pid Directory = kaki sd\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Pid Directory" = "kaki sd"}
       }
 
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki-sd" }
       }
 
    (* inline comment *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki-sd"
            { "#comment" = "just a comment"} }
       }
 
    (* multiple values *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki sd"}
          {"Foo" = "moo"}
       }
 
    (* newline comment *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki sd" }
          {"#comment" = "just a comment" }
       }
 
    (* TODO: include statements *)
    test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"@include" = "/etc/foo.conf"}
       }
    
@@ -154,7 +154,7 @@ module Bacula =
 *)
 
    test Bacula.lns get "Storage {\n   Name = kaki sd}\n" =
-      {"Storage"
+      {"@block" = "Storage"
          {"Name" = "kaki sd"}
       }
 
