@@ -42,10 +42,10 @@ module Bacula =
    let line (sto:lens) = [ sto . comment_or_eol ]
    let line_noeol (sto:lens) = [ sto . comment_or_semicolon ]
 
-   let block =
-        let entry = Util.empty | (indent . (line keyvalue|line include))
-     in let entry_noindent = line keyvalue | line include
-     in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include
+   let rec block =
+        let entry = Util.empty | (indent . (line keyvalue|line include|block))
+     in let entry_noindent = line keyvalue | line include | block
+     in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include | block
      in let entry_noeol = indent . entry_noindent_noeol
      in [ label "@block" . store /[a-zA-Z]+/
         . Build.block_generic
@@ -144,7 +144,12 @@ module Bacula =
      { "Name" = "kaki-sd" }
    }
 
-   test Bacula.lns get "FileSet { Include { signature = SHA1 } }" = ?
+   test Bacula.lns get "FileSet { Include { signature = SHA1 } }" =
+   { "@block" = "FileSet"
+       { "@block" = "Include"
+         { "signature" = "SHA1" }
+       }
+   }
    
    test Bacula.lns get "FileSet {
   Name = \"DefaultSet\"
@@ -156,13 +161,14 @@ module Bacula =
     File = /etc
   }
 }" =
-      {"FileSet"
+      {"@block" = "FileSet"
          {"Name" = "DefaultSet"}
-         {"Include"
-            {"Options"
+         {"@block" = "Include"
+            {"@block" = "Options"
               {"signature" = "SHA1"}
               {"noatime" = "yes"}
             }
+            { }
             {"File" = "/etc"}
          }
       }
