@@ -29,7 +29,7 @@ module Bacula =
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
    let dquote = del /"?/ "\""
 
-   let val = dquote . store /[^}"#\n\t; ][^}"#\n;]*[^}"#\n\t; ]/ . dquote
+   let val = dquote . store /[^}"#\n\t; ]([^}"#\n;]*[^}"#\n\t; ])?/ . dquote
 
    let keyvalue = key key_name . equal . val
    let include = label "@include" . Util.del_str "@" . store /[^# \t\n@};]+/
@@ -101,10 +101,10 @@ module Bacula =
          {"Pid Directory" = "kaki sd"}
       }
 
-   (* edge case in key *)
+   (* one char value *)
    test Bacula.lns get "Storage {\n   Maximum Concurrent Jobs = 1\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd" }
+         {"Maximum Concurrent Jobs" = "1" }
       }
 
    (* semicolon *)
