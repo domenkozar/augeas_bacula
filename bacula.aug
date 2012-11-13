@@ -101,6 +101,12 @@ module Bacula =
          {"Pid Directory" = "kaki sd"}
       }
 
+   (* edge case in key *)
+   test Bacula.lns get "Storage {\n   Maximum Concurrent Jobs = 1\n}" =
+      {"@block" = "Storage"
+         {"Name" = "kaki-sd" }
+      }
+
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"@block" = "Storage"
@@ -121,7 +127,7 @@ module Bacula =
       }
       { "#comment" = "just a comment"} }
 
-   (* TODO: comment after } *)
+   (* comment after } *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment\n" =
       {"@block" = "Storage"
          {"Name" = "kaki-sd"
@@ -143,7 +149,7 @@ module Bacula =
          {"#comment" = "just a comment" }
       }
 
-   (* TODO: include statements *)
+   (* include statements *)
    test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}" =
       {"@block" = "Storage"
          {"@include" = "/etc/foo.conf"}
@@ -192,9 +198,10 @@ module Bacula =
          }
       }
 
-   (* TODO: include top level statements *)
+   (* include top level statements *)
    test Bacula.lns get "@/etc/foo.conf\n" =
       {"@include" = "/etc/foo.conf"}
+
 
    (* Blocks can follow each other without \n *)
    test Bacula.lns get "Storage{Name = kaki sd}Storage{Name = kaki-sd}" =
