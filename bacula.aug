@@ -35,7 +35,8 @@ module Bacula =
    let keyvalue = [key key_name . equal . val]
    let include = [label "@include" . del "@" "@" . store /[^ #\t\n@};]+/]
 
-   let line = indent . (keyvalue|include) . del /;?/ "" . Util.comment_or_eol
+   let semicolon = [ del /[ \t]*;/ ";" ]
+   let line = indent . (keyvalue|include) . (semicolon|Util.comment_or_eol)
    let brackets = del /[ \n\t]*\{/ " {" . line+ . del /[ \t\n]*}/ "\n}"
 
    let directive = [ key /[a-zA-Z]+/ . brackets ]
