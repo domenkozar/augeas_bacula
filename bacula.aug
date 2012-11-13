@@ -147,6 +147,12 @@ module Bacula =
       {"Name" = "kaki sd"}
       {"Foo" = "moo"}
 
+   (* escaping quotes in value *)
+   test Bacula.lns get "Storage {\nName = \"foo \\" bar \"\n}" =
+      {"@block" = "Storage"
+         {"Name" = "foo \" bar"}
+      }
+
    (* newline comment *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
       {"@block" = "Storage"
