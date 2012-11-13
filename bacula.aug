@@ -43,7 +43,7 @@ module Bacula =
    let line_noeol (sto:lens) = [ sto . comment_or_semicolon ]
 
    let rec block =
-        let entry = Util.empty | (indent . (line keyvalue|line include|block))
+        let entry = Util.empty | (indent . (line keyvalue | line include | block))
      in let entry_noindent = line keyvalue | line include | block
      in let entry_noindent_noeol = line_noeol keyvalue | line_noeol include | block
      in let entry_noeol = indent . entry_noindent_noeol
