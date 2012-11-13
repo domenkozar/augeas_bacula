@@ -32,12 +32,12 @@ module Bacula =
 
    let val = dquote . store /[^"#\n\t; ][^"#\n;]*[^"#\n\t; ]/ . dquote
 
-   let keyvalue = [key key_name . equal . val]
-   let include = [label "@include" . del "@" "@" . store /[^ #\t\n@};]+/]
+   let keyvalue = key key_name . equal . val
+   let include = label "@include" . del "@" "@" . store /[^ #\t\n@};]+/
 
    let semicolon = [ del /[ \t]*;/ ";" ]
-   let line = indent . (keyvalue|include) . (semicolon|Util.comment_or_eol)
-   let brackets = del /[ \n\t]*\{\n*/ " {\n" . line+ . del /[ \t\n]*}/ "\n}"
+   let line (sto:lens) = [ indent . sto . (semicolon|Util.comment_or_eol) ]
+   let brackets = del /[ \n\t]*\{\n*/ " {\n" . (line keyvalue |line include)+ . del /[ \t\n]*}/ "\n}"
 
    let directive = [ key /[a-zA-Z]+/ . brackets ]
 
@@ -69,14 +69,14 @@ module Bacula =
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"Storage"
-         {"Name" = "kaki-sd"}
+         {"Name" = "kaki-sd" {} }
       }
 
    (* inline comment *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}" =
       {"Storage"
-         {"Name" = "kaki-sd"}
-         { "#comment" = "just a comment"}
+         {"Name" = "kaki-sd"
+           { "#comment" = "just a comment"} }
       }
 
    (* multiple values *)
@@ -89,14 +89,16 @@ module Bacula =
    (* newline comment *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
       {"Storage"
-         {"Name" = "kaki sd"}
-         {"#comment" = "just a comment"}
+         {"Name" = "kaki sd"
+           {"#comment" = "just a comment"}
+           {} }
       }
 
    (* TODO: include statements *)
    test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}" =
       {"Storage"
          {"@include" = "/etc/foo.conf"}
+         {}
       }
    
    (* TODO: support nested directives
