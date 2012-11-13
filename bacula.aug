@@ -41,7 +41,7 @@ module Bacula =
 
    let directive = [ key /[a-zA-Z]+/ . brackets ]
 
-   let lns = (directive|Util.empty|Util.comment_eol)*
+   let lns = (directive|Util.empty|Util.comment)*
 
    let filter = incl "/etc/bacula/*.conf"
               . Util.stdexcl
