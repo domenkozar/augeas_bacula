@@ -67,6 +67,8 @@ module Bacula =
               . Util.stdexcl
 
    let xfm = transform lns filter
+  
+   (* TODO: put tests *)
 
    test (Bacula.line keyvalue) get "Name = kaki-sd\n" =
       {"Name" = "kaki-sd"}
@@ -110,6 +112,20 @@ module Bacula =
            { "#comment" = "just a comment"} }
       }
 
+   (* comment as part of directive *)
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n # just a comment\n}\n" =
+      {"@block" = "Storage"
+         {"Name" = "kaki-sd"
+      }
+      { "#comment" = "just a comment"} }
+
+   (* comment after } *)
+   test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment" =
+      {"@block" = "Storage"
+         {"Name" = "kaki-sd"
+      }
+      { "#comment" = "just a comment"} }
+
    (* multiple values *)
    test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}\n" =
       {"@block" = "Storage"
@@ -124,11 +140,29 @@ module Bacula =
          {"#comment" = "just a comment" }
       }
 
-   (* TODO: include statements *)
-   test Bacula.lns get "Storage {\n  @/etc/foo.conf\n}\n" =
+   (* no endline *)
+   test Bacula.lns get "Storage {\n   Name = kaki sd}\n" =
       {"@block" = "Storage"
+         {"Name" = "kaki sd"}
+      }
+
+   (* one directive after another *)
+   test Bacula.lns get "Storage {}Storage {}" =
+      {"@block" = "Storage"
+      }
+      {"@block" = "Storage"
+      }
+
+   (* include statements in directives *)
+   test Bacula.lns get "Storage {\n@/etc/foo.conf\n}\n" =
+      {"Storage"
          {"@include" = "/etc/foo.conf"}
       }
+
+   (* TODO: include top level statements *)
+   test Bacula.lns get "@/etc/foo.conf" =
+      {"@include" = "/etc/foo.conf"}
+
    
    (* TODO: support nested directives
    test Bacula.lns get "FileSet {
@@ -158,4 +192,3 @@ module Bacula =
          {"Name" = "kaki sd"}
       }
 
-   (* TODO: comment at end of line with } *)
