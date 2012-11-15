@@ -27,11 +27,11 @@ module Bacula =
    let indent = Util.del_opt_ws "\t"
    let equal = del /[ \t]*=[ \t]*/ " = "
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
-   let dquote = del /"?/ "\""
 
-   let val = dquote . store /[^}"#\n\t; ]([^}"#\n;]*[^}"#\n\t; ])?/ . dquote
+   let val_quote = [square /"/ (store /([^"#]|\\")+/)]
+   let val = [label "" . store /[^}"#\n\t; ]([^}"#\n;]*[^}"#\n\t; ])?/]
 
-   let keyvalue = key key_name . equal . val
+   let keyvalue = key key_name . equal . (val|val_quote)
    let include = label "@include" . Util.del_str "@" . store /[^# \t\n@};]+/
 
    let semicolon = del /([ \t]*;)?/ ""
@@ -73,91 +73,123 @@ module Bacula =
    (* TODO: put tests *)
 
    test (Bacula.line keyvalue) get "Name = kaki-sd\n" =
-      {"Name" = "kaki-sd"}
+      {"Name" 
+        {"" = "kaki-sd"}
+      }
 
    test (Bacula.line include) get "@/etc/foo.conf\n" =
       {"@include" = "/etc/foo.conf"}
 
    test (Bacula.line keyvalue) get "Name = kaki-sd;" =
-      {"Name" = "kaki-sd"}
+      {"Name" 
+        {"" = "kaki-sd"}
+      }
 
    test (Bacula.line include) get "@foobar  ;" =
       {"@include" = "foobar"}
 
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd"}
+        {"Name" 
+          {"" = "kaki-sd"}
+        }
       }
 
    (* value can have quotes *)
-   test Bacula.lns get "Storage {\n   Name = \"kaki sd\"\n}" =
+   test Bacula.lns get "Storage {\n   Name = \"kaki-sd\"\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki sd"}
+        {"Name" 
+          {"\"" = "kaki-sd"}
+        }
       }
 
    (* whitespace in key *)
    test Bacula.lns get "Storage {\n   Pid Directory = kaki sd\n}" =
       {"@block" = "Storage"
-         {"Pid Directory" = "kaki sd"}
+         {"Pid Directory"
+          {"" = "kaki sd"}
+         }
       }
 
    (* one char value *)
    test Bacula.lns get "Storage {\n   Maximum Concurrent Jobs = 1\n}" =
       {"@block" = "Storage"
-         {"Maximum Concurrent Jobs" = "1" }
+         {"Maximum Concurrent Jobs"
+          {"" = "1"}
+         }
       }
 
    (* semicolon *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd;\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd" }
+        {"Name" 
+          {"" = "kaki-sd"}
+        }
       }
 
    (* inline comment *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd         # just a comment\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd"
-           { "#comment" = "just a comment"} }
+        {"Name" 
+          { "" = "kaki-sd" }
+          { "#comment" = "just a comment"}
+        }
       }
 
    (* comment as part of directive *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n # just a comment\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd"
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
+        { "#comment" = "just a comment"}
       }
-      { "#comment" = "just a comment"} }
 
    (* comment after } *)
    test Bacula.lns get "Storage {\n   Name = kaki-sd\n}\n # just a comment\n" =
       {"@block" = "Storage"
-         {"Name" = "kaki-sd"
-      } }
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
+      }
       { }
       { "#comment" = "just a comment"}
 
    (* multiple values *)
-   test Bacula.lns get "Storage {\n  Name = kaki sd\nFoo = moo\n}" =
+   test Bacula.lns get "Storage {\n  Name = kaki-sd\nFoo = moo\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki sd"}
-         {"Foo" = "moo"}
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
+        {"Foo" 
+          { "" = "moo" }
+        }
       }
 
    (* toplevel key/value for include files *)
-   test Bacula.lns get "Name = kaki sd\nFoo = moo\n" =
-      {"Name" = "kaki sd"}
-      {"Foo" = "moo"}
+   test Bacula.lns get "Name = kaki-sd\nFoo = moo\n" =
+      {"Name" 
+        { "" = "kaki-sd" }
+      }
+      {"Foo" 
+        { "" = "moo" }
+      }
 
    (* escaping quotes in value *)
-   test Bacula.lns get "Storage {\nName = \"foo \\" bar \"\n}" =
+   test Bacula.lns get "Storage {\nName = \"foo \\" bar\"\n}" =
       {"@block" = "Storage"
-         {"Name" = "foo \" bar"}
+        {"Name" 
+          { "\"" = "foo \\" bar" }
+        }
       }
 
    (* newline comment *)
-   test Bacula.lns get "Storage {\n  Name = kaki sd\n# just a comment\n}" =
+   test Bacula.lns get "Storage {\n  Name = kaki-sd\n# just a comment\n}" =
       {"@block" = "Storage"
-         {"Name" = "kaki sd" }
-         {"#comment" = "just a comment" }
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
+        {"#comment" = "just a comment" }
       }
 
    (* include statements *)
@@ -166,24 +198,19 @@ module Bacula =
          {"@include" = "/etc/foo.conf"}
       }
 
-   test Bacula.lns get "Storage {\n   Name = kaki sd}" =
+   test Bacula.lns get "Storage {\n   Name = kaki-sd}" =
       {"@block" = "Storage"
-         {"Name" = "kaki sd"}
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
       }
-
-   (* Blocks can follow each other without \n *)
-   test Bacula.lns get "Storage{Name = kaki sd}Storage{Name = kaki-sd}" =
-   { "@block" = "Storage"
-     { "Name" = "kaki sd" }
-   }
-   { "@block" = "Storage"
-     { "Name" = "kaki-sd" }
-   }
 
    test Bacula.lns get "FileSet { Include { signature = SHA1 } }" =
    { "@block" = "FileSet"
        { "@block" = "Include"
-         { "signature" = "SHA1" }
+         { "signature" 
+           { "" = "SHA1" }
+         }
        }
    }
    
@@ -198,14 +225,22 @@ module Bacula =
   }
 }" =
       {"@block" = "FileSet"
-         {"Name" = "DefaultSet"}
+         { "Name" 
+           { "\"" = "DefaultSet" }
+         }
          {"@block" = "Include"
             {"@block" = "Options"
-              {"signature" = "SHA1"}
-              {"noatime" = "yes"}
+              { "signature" 
+                { "" = "SHA1" }
+              }
+              { "noatime" 
+                { "" = "yes" }
+              }
             }
             { }
-            {"File" = "/etc"}
+            { "File" 
+              { "" = "/etc" }
+            }
          }
       }
 
@@ -217,16 +252,22 @@ module Bacula =
    (* Blocks can follow each other without \n *)
    test Bacula.lns get "Storage{Name = kaki sd}Storage{Name = kaki-sd}" =
    { "@block" = "Storage"
-     { "Name" = "kaki sd" }
+        {"Name" 
+          { "" = "kaki sd" }
+        }
    }
    { "@block" = "Storage"
-     { "Name" = "kaki-sd" }
+        {"Name" 
+          { "" = "kaki-sd" }
+        }
    }
 
    (* recursive directives *)
    test Bacula.lns get "FileSet { Include { signature = SHA1 } }" =
    { "@block" = "FileSet"
        { "@block" = "Include"
-         { "signature" = "SHA1" }
+         { "signature" 
+           { "" = "SHA1" }
+         }
        }
    }
