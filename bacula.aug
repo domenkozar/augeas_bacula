@@ -28,7 +28,8 @@ module Bacula =
    let equal = del /[ \t]*=[ \t]*/ " = "
    let key_name = /[a-zA-Z][a-zA-Z ]+[a-zA-Z]/
 
-   let val_quote = [square /"/ (store /([^"#]|\\")+/)]
+   (* let val_quote = [square /"/ (store /([^"#]|\\")+/)] *) (* augeas < 1.0 *)
+   let val_quote = [ square ( key /["']/ ) (store /([^"#]|\\")+/) ( del /["']/ "\"" ) ]
    let val = [label "" . store /[^}"#\n\t; ]([^}"#\n;]*[^}"#\n\t; ])?/]
 
    let keyvalue = key key_name . equal . (val|val_quote)
